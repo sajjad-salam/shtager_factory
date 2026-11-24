@@ -13,9 +13,9 @@ enum ReportPeriod { month, quarter, year, all }
 
 extension ReportPeriodInfo on ReportPeriod {
   String get label => switch (this) {
-    ReportPeriod.month => 'هذا الشهر',
-    ReportPeriod.quarter => 'آخر ٣ أشهر',
-    ReportPeriod.year => 'هذه السنة',
+    ReportPeriod.month => 'الشهر',
+    ReportPeriod.quarter => '٣ أشهر',
+    ReportPeriod.year => 'السنة',
     ReportPeriod.all => 'الكل',
   };
 
@@ -49,12 +49,11 @@ class CenterStats {
 }
 
 class RankItem {
-  const RankItem(this.id, this.label, this.value, {this.sub});
+  const RankItem(this.id, this.label, this.value);
 
   final String id;
   final String label;
   final double value;
-  final String? sub;
 }
 
 class MonthPoint {
@@ -81,22 +80,6 @@ const arabicMonths = [
   'كانون الأول',
 ];
 
-/// أسماء قصيرة لمحور الرسم (تشرين وكانون يتكررون فنميزهم بالرقم).
-const shortArabicMonths = [
-  'ك٢',
-  'شباط',
-  'آذار',
-  'نيسان',
-  'أيار',
-  'حزيران',
-  'تموز',
-  'آب',
-  'أيلول',
-  'ت١',
-  'ت٢',
-  'ك١',
-];
-
 class Report {
   Report._(this.period, this.centerId);
 
@@ -109,8 +92,6 @@ class Report {
   final List<MonthPoint> months = [];
   final Map<IncomingCategory, double> purchasesByCategory = {};
   List<RankItem> topCustomers = [];
-  List<RankItem> topProducts = [];
-  List<RankItem> topSuppliers = [];
   int salesCount = 0;
   int purchaseCount = 0;
 
@@ -154,7 +135,6 @@ class Report {
     bool inPeriod(DateTime d) => from == null || !d.isBefore(from);
 
     final byCustomer = <String, double>{};
-    final byProduct = <String, (double amount, double qty, String unit)>{};
     final saleReceiptIds = <String>{};
 
     for (final r in store.receipts) {
@@ -172,17 +152,10 @@ class Report {
         if (item.factoryMade) stats.stygerQty += item.qty;
         saleReceiptIds.add(r.id);
         byCustomer[r.customerId] = (byCustomer[r.customerId] ?? 0) + item.total;
-        final prev = byProduct[item.productName];
-        byProduct[item.productName] = (
-          (prev?.$1 ?? 0) + item.total,
-          (prev?.$2 ?? 0) + item.qty,
-          item.unit,
-        );
       }
     }
     report.salesCount = saleReceiptIds.length;
 
-    final bySupplier = <String, (double amount, int count)>{};
     for (final p in store.incomingReceipts) {
       final center = purchaseCenterOf(store, p);
       final stats = report.centers[center];
@@ -194,37 +167,11 @@ class Report {
       report.purchaseCount++;
       report.purchasesByCategory[p.category] =
           (report.purchasesByCategory[p.category] ?? 0) + p.amount;
-      final supplier = p.supplier.trim();
-      if (supplier.isNotEmpty) {
-        final prev = bySupplier[supplier];
-        bySupplier[supplier] = (
-          (prev?.$1 ?? 0) + p.amount,
-          (prev?.$2 ?? 0) + 1,
-        );
-      }
     }
 
     report.topCustomers = [
       for (final e in byCustomer.entries)
-        RankItem(
-          e.key,
-          store.customerById(e.key)?.name ?? '—',
-          e.value,
-          sub: 'عليه حالياً ${fmtMoney(store.balanceOf(e.key))}',
-        ),
-    ]..sort((a, b) => b.value.compareTo(a.value));
-    report.topProducts = [
-      for (final e in byProduct.entries)
-        RankItem(
-          e.key,
-          e.key,
-          e.value.$1,
-          sub: '${fmtNum(e.value.$2)} ${e.value.$3}',
-        ),
-    ]..sort((a, b) => b.value.compareTo(a.value));
-    report.topSuppliers = [
-      for (final e in bySupplier.entries)
-        RankItem(e.key, e.key, e.value.$1, sub: '${e.value.$2} وصل'),
+        RankItem(e.key, store.customerById(e.key)?.name ?? '—', e.value),
     ]..sort((a, b) => b.value.compareTo(a.value));
     return report;
   }

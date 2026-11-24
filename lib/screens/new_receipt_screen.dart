@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../center_picker.dart';
-import '../charts.dart';
 import '../models.dart';
 import '../store.dart';
 import '../telegram_backup.dart';
@@ -137,7 +136,7 @@ class _NewReceiptScreenState extends State<NewReceiptScreen> {
     }
     if (items.any((i) => i.factoryMade) && _factoryId == null) {
       setState(() => _factoryError = true);
-      toast(context, 'اختار المعمل اللي طلع منه الشتايكر', error: true);
+      toast(context, 'اختار المعمل', error: true);
       final target = _factoryKey.currentContext;
       if (target != null) {
         Scrollable.ensureVisible(
@@ -290,91 +289,40 @@ class _NewReceiptScreenState extends State<NewReceiptScreen> {
 
   /// اختيار المعمل: يخص الشتايكر فقط. باقي المنتجات تروح تلقائياً لـ«منتجات أخرى».
   Widget _factorySection() {
-    final items = _items;
-    final styger = items
-        .where((i) => i.factoryMade)
-        .fold<double>(0, (s, i) => s + i.total);
-    final others = items
-        .where((i) => !i.factoryMade)
-        .fold<double>(0, (s, i) => s + i.total);
-    final hasStyger = items.any((i) => i.factoryMade);
-    final String hint;
-    if (items.isEmpty) {
-      hint = 'حدد المنتجات أولاً';
-    } else if (!hasStyger) {
-      hint = 'ما بالوصل شتايكر، فمبلغه كله يُحسب على «منتجات أخرى».';
-    } else {
-      hint = 'اختار من وين طلع الشتايكر حتى ينحسب ربحه على المعمل الصحيح.';
-    }
-    return Column(
+    // يطلع بس إذا الوصل بيه شتايكر. باقي المنتجات تروح لـ«منتجات أخرى» تلقائياً.
+    final hasStyger = _items.any((i) => i.factoryMade);
+    final showError = _factoryError && _factoryId == null;
+    return AnimatedSize(
       key: _factoryKey,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const SectionTitle('الشتايكر من أي معمل؟'),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
-          child: Text(
-            hint,
-            style: TextStyle(
-              fontSize: 12,
-              color: _factoryError && hasStyger && _factoryId == null
-                  ? debtColor
-                  : appMuted,
-            ),
-          ),
-        ),
-        CenterPicker(
-          ids: store.stygerSourceIds,
-          selected: hasStyger ? _factoryId : null,
-          enabled: hasStyger,
-          error: _factoryError && _factoryId == null,
-          onChanged: (id) => setState(() {
-            _factoryId = id;
-            _factoryError = false;
-          }),
-        ),
-        if (hasStyger && others > 0) ...[
-          const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: appSurface,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Column(
+      duration: const Duration(milliseconds: 200),
+      alignment: Alignment.topCenter,
+      child: !hasStyger
+          ? const SizedBox(width: double.infinity)
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _splitLine(
-                  _factoryId == null ? appBorder : centerColor(_factoryId!),
-                  'الشتايكر ← ${_factoryId == null ? 'المعمل المختار' : store.centerName(_factoryId!)}',
-                  styger,
+                const SectionTitle('الشتايكر من أي معمل؟'),
+                CenterPicker(
+                  ids: store.stygerSourceIds,
+                  selected: _factoryId,
+                  error: showError,
+                  onChanged: (id) => setState(() {
+                    _factoryId = id;
+                    _factoryError = false;
+                  }),
                 ),
-                const SizedBox(height: 6),
-                _splitLine(
-                  otherProductsColor,
-                  'باقي المنتجات ← منتجات أخرى',
-                  others,
-                ),
+                if (showError)
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(4, 8, 4, 0),
+                    child: Text(
+                      'اختار المعمل',
+                      style: TextStyle(fontSize: 13, color: debtColor),
+                    ),
+                  ),
               ],
             ),
-          ),
-        ],
-      ],
     );
   }
-
-  Widget _splitLine(Color c, String label, double v) => Row(
-    children: [
-      LegendDot(c),
-      const SizedBox(width: 8),
-      Expanded(
-        child: Text(label, style: const TextStyle(fontSize: 12, color: appInk)),
-      ),
-      Text(
-        fmtMoney(v),
-        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-      ),
-    ],
-  );
 
   Widget _productRow(Product p) {
     final q = _qtyOf(p);

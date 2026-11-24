@@ -93,14 +93,13 @@ class _MainDashboardState extends State<MainDashboard> {
                   onChanged: (p) => setState(() => _period = p),
                 ),
                 const SizedBox(height: 14),
-                HeroProfitCard(report: report, title: 'صافي الربح التقديري'),
+                HeroProfitCard(report: report),
                 const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
                       child: _SectionTile(
                         title: 'المبيعات',
-                        subtitle: 'الخلفات والوصولات',
                         icon: Icons.north_east_rounded,
                         color: okColor,
                         addLabel: 'بيع',
@@ -118,7 +117,6 @@ class _MainDashboardState extends State<MainDashboard> {
                     Expanded(
                       child: _SectionTile(
                         title: 'المشتريات',
-                        subtitle: 'المواد والعمال والبضاعة',
                         icon: Icons.south_west_rounded,
                         color: debtColor,
                         addLabel: 'شراء',
@@ -139,8 +137,7 @@ class _MainDashboardState extends State<MainDashboard> {
                 const SizedBox(height: 16),
                 if (noData) ...[_welcome(), const SizedBox(height: 16)],
                 ChartCard(
-                  title: 'الربح حسب المعمل',
-                  subtitle: 'الربح = المبيعات − المشتريات · اضغط لتقرير مفصل',
+                  title: 'ربح كل معمل',
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -161,19 +158,13 @@ class _MainDashboardState extends State<MainDashboard> {
                   ),
                 ),
                 const SizedBox(height: 14),
-                salesShareCard(report),
-                const SizedBox(height: 14),
                 trendCard(report),
                 const SizedBox(height: 14),
                 topCustomersCard(context, report),
                 const SizedBox(height: 14),
                 activeFactoriesCard(report),
                 const SizedBox(height: 14),
-                topProductsCard(report),
-                const SizedBox(height: 14),
                 purchasesByCategoryCard(report),
-                const SizedBox(height: 14),
-                topSuppliersCard(report),
               ],
             ),
           ),
@@ -206,10 +197,6 @@ class _MainDashboardState extends State<MainDashboard> {
                 color: appInk,
               ),
             ),
-            const Text(
-              'تقارير المبيعات والمشتريات والأرباح',
-              style: TextStyle(fontSize: 12, color: appMuted),
-            ),
           ],
         ),
       ),
@@ -236,7 +223,7 @@ class _MainDashboardState extends State<MainDashboard> {
         SizedBox(width: 10),
         Expanded(
           child: Text(
-            'سجّل أول وصل بيع أو شراء، والتقارير والرسوم تطلع هنا تلقائياً حسب كل معمل.',
+            'سجّل أول وصل، والتقارير تطلع هنا.',
             style: TextStyle(fontSize: 13, height: 1.5),
           ),
         ),
@@ -248,7 +235,6 @@ class _MainDashboardState extends State<MainDashboard> {
 class _SectionTile extends StatelessWidget {
   const _SectionTile({
     required this.title,
-    required this.subtitle,
     required this.icon,
     required this.color,
     required this.addLabel,
@@ -257,7 +243,6 @@ class _SectionTile extends StatelessWidget {
   });
 
   final String title;
-  final String subtitle;
   final IconData icon;
   final Color color;
   final String addLabel;
@@ -295,12 +280,6 @@ class _SectionTile extends StatelessWidget {
             Text(
               title,
               style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
-            ),
-            Text(
-              subtitle,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 11, color: appMuted),
             ),
             const SizedBox(height: 10),
             FilledButton.tonalIcon(

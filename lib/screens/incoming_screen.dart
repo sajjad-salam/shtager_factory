@@ -79,12 +79,7 @@ class _IncomingScreenState extends State<IncomingScreen> {
               if (receipts.isEmpty)
                 EmptyState(
                   icon: Icons.inventory_2_outlined,
-                  title: _filter == null
-                      ? 'ماكو مشتريات هنا بعد'
-                      : 'ماكو وصولات بهذا التصنيف',
-                  subtitle: _filter == null
-                      ? 'اضغط «وصل شراء» وسجّل أول صرف'
-                      : 'جرّب تصنيف ثاني أو أضف وصل جديد',
+                  title: 'ماكو وصولات',
                 )
               else
                 for (final receipt in receipts) ...[
@@ -112,7 +107,7 @@ class _IncomingScreenState extends State<IncomingScreen> {
     child: Row(
       children: [
         ChoiceChip(
-          label: const Text('كل الجهات'),
+          label: const Text('الكل'),
           selected: _centerId == null,
           onSelected: (_) => setState(() {
             _centerId = null;
@@ -148,9 +143,7 @@ class _IncomingScreenState extends State<IncomingScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            _centerId == null
-                ? 'إجمالي المشتريات'
-                : 'مشتريات ${store.centerName(_centerId!)}',
+            'المشتريات',
             style: const TextStyle(color: Colors.white70, fontSize: 13),
           ),
           const SizedBox(height: 4),
@@ -205,7 +198,6 @@ class _IncomingScreenState extends State<IncomingScreen> {
     final center = purchaseCenterOf(store, receipt);
     final detail = [
       if (_centerId == null) store.centerName(center),
-      if (receipt.supplier.isNotEmpty) receipt.supplier,
       if (receipt.notes.isNotEmpty) receipt.notes,
     ];
     return Material(
@@ -295,7 +287,6 @@ class _NewIncomingReceiptScreenState extends State<NewIncomingReceiptScreen> {
   final store = AppStore.instance;
   final _formKey = GlobalKey<FormState>();
   final _amount = TextEditingController();
-  final _supplier = TextEditingController();
   final _notes = TextEditingController();
   late String? _centerId = widget.centerId;
   late IncomingCategory _category = _defaultCategory(_centerId);
@@ -307,15 +298,8 @@ class _NewIncomingReceiptScreenState extends State<NewIncomingReceiptScreen> {
       : IncomingCategoryInfo.forCenter(centerId).first;
 
   @override
-  void initState() {
-    super.initState();
-    _supplier.addListener(() => setState(() {}));
-  }
-
-  @override
   void dispose() {
     _amount.dispose();
-    _supplier.dispose();
     _notes.dispose();
     super.dispose();
   }
@@ -333,7 +317,7 @@ class _NewIncomingReceiptScreenState extends State<NewIncomingReceiptScreen> {
     final center = _centerId;
     if (center == null) {
       setState(() => _centerError = true);
-      toast(context, 'اختار الجهة اللي ينحسب عليها الصرف', error: true);
+      toast(context, 'اختار المعمل', error: true);
       return;
     }
     if (!_formKey.currentState!.validate()) return;
@@ -343,7 +327,6 @@ class _NewIncomingReceiptScreenState extends State<NewIncomingReceiptScreen> {
       category: _category,
       amount: parseNum(_amount.text),
       notes: _notes.text,
-      supplier: _supplier.text,
     );
     TelegramBackup.instance.backupNow(
       reason: 'وصل شراء جديد #${receipt.number}',
@@ -363,12 +346,6 @@ class _NewIncomingReceiptScreenState extends State<NewIncomingReceiptScreen> {
     final categories = _centerId == null
         ? IncomingCategoryInfo.forCenter('')
         : IncomingCategoryInfo.forCenter(_centerId!);
-    final typed = _supplier.text.trim();
-    final suggestions = store
-        .suppliersFor()
-        .where((s) => s != typed && (typed.isEmpty || s.contains(typed)))
-        .take(6)
-        .toList();
     return Scaffold(
       appBar: AppBar(
         title: Text('وصل شراء #${store.nextIncomingReceiptNumber}'),
@@ -378,27 +355,15 @@ class _NewIncomingReceiptScreenState extends State<NewIncomingReceiptScreen> {
         child: ListView(
           padding: const EdgeInsets.all(AppSpace.page),
           children: [
-            const SectionTitle('الصرف على أي جهة؟'),
+            const SectionTitle('على أي معمل؟'),
             CenterPicker(
               ids: store.centerIds,
               selected: _centerId,
               error: _centerError,
               onChanged: _pickCenter,
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(4, 8, 4, 0),
-              child: Text(
-                _centerId == null
-                    ? 'اختار المعمل حتى ينحسب الصرف من ربحه.'
-                    : centerHint(_centerId!),
-                style: TextStyle(
-                  fontSize: 12,
-                  color: _centerError ? debtColor : appMuted,
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            const SectionTitle('نوع الصرف'),
+            const SizedBox(height: 6),
+            const SectionTitle('النوع'),
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -426,57 +391,21 @@ class _NewIncomingReceiptScreenState extends State<NewIncomingReceiptScreen> {
                   prefixIcon: Icon(Icons.payments_outlined),
                 ),
                 validator: (value) =>
-                    parseNum(value ?? '') <= 0 ? 'اكتب مبلغ أكبر من صفر' : null,
+                    parseNum(value ?? '') <= 0 ? 'اكتب المبلغ' : null,
               ),
             ),
-            const SizedBox(height: 14),
-            TextFormField(
-              controller: _supplier,
-              textInputAction: TextInputAction.next,
-              decoration: InputDecoration(
-                labelText: _category == IncomingCategory.workers
-                    ? 'اسم العامل أو الفريق (اختياري)'
-                    : 'اشتريت من؟ (اختياري)',
-                hintText: _category == IncomingCategory.workers
-                    ? 'مثال: فريق سمير'
-                    : 'مثال: معمل أسمنت كربلاء، معرض أبو أحمد',
-                prefixIcon: const Icon(Icons.storefront_outlined),
-              ),
-            ),
-            if (suggestions.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: [
-                  for (final s in suggestions)
-                    ActionChip(
-                      avatar: const Icon(Icons.history_rounded, size: 16),
-                      label: Text(s),
-                      onPressed: () => _supplier.text = s,
-                    ),
-                ],
-              ),
-            ],
             const SizedBox(height: 14),
             TextFormField(
               controller: _notes,
               minLines: 2,
               maxLines: 6,
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 labelText: 'ملاحظات (اختياري)',
                 alignLabelWithHint: true,
-                prefixIcon: const Padding(
+                prefixIcon: Padding(
                   padding: EdgeInsets.only(bottom: 30),
                   child: Icon(Icons.notes_outlined),
                 ),
-                helperText: _category == IncomingCategory.workers
-                    ? 'مثال: أجور هذا الأسبوع'
-                    : _category == IncomingCategory.goods
-                    ? 'مثال: ٥٠٠ قطعة شتايكر، أو ٢٠ تنكة ماستيك'
-                    : _category == IncomingCategory.other
-                    ? 'مثال: تصليح المولد'
-                    : 'مثال: اسم السائق، عدد السيارات أو مقدار الحمل',
               ),
             ),
           ],

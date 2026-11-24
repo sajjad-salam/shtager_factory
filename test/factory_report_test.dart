@@ -63,7 +63,6 @@ void main() {
         factoryId: f1.id,
         category: IncomingCategory.cement,
         amount: 50000,
-        supplier: 'أسمنت كربلاء',
       );
       await s.addIncomingReceipt(
         factoryId: f2.id,
@@ -74,7 +73,6 @@ void main() {
         factoryId: kOtherFactoriesId,
         category: IncomingCategory.goods,
         amount: 30000,
-        supplier: 'أسمنت كربلاء',
       );
       await s.addIncomingReceipt(
         factoryId: kOtherProductsId,
@@ -102,10 +100,7 @@ void main() {
       expect(r.profit, s.estimatedProfit);
       expect(r.salesCount, 4);
       expect(r.topCustomers.single.value, s.totalSales);
-      expect(r.topSuppliers.first.label, 'أسمنت كربلاء');
-      expect(r.topSuppliers.first.value, 80000);
       expect(r.activeSources.first.id, f1.id);
-      expect(s.suppliersFor().first, 'أسمنت كربلاء');
 
       // تقرير جهة وحدة
       final only = Report.build(s, centerId: f2.id);
@@ -113,10 +108,9 @@ void main() {
       expect(only.totalSales, 50000);
       expect(only.topCustomers.single.value, 50000);
 
-      // الحفظ والاسترجاع يحتفظ بالمعمل والمورد
+      // الحفظ والاسترجاع يحتفظ بالمعمل
       s.importDb(s.exportDb());
       expect(Report.build(s).centers[f2.id]!.sales, 50000);
-      expect(s.incomingReceipts.where((p) => p.supplier.isNotEmpty).length, 2);
 
       // حذف معمل: مشترياته تنحذف، ومبيعاته تنتقل لـ«معامل أخرى»
       final balanceBefore = s.balanceOf(c.id);

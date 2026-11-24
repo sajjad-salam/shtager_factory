@@ -135,8 +135,6 @@ Future<Uint8List> buildIncomingReceiptPdf(IncomingReceipt receipt) async {
             child: pw.Column(
               children: [
                 infoRow('الجهة', center),
-                if (receipt.supplier.isNotEmpty)
-                  infoRow('اشتريت من', receipt.supplier),
                 infoRow('نوع الصرف', receipt.category.label),
                 infoRow('التاريخ', fmtDateTime(receipt.date)),
                 infoRow('المبلغ', fmtMoney(receipt.amount), strong: true),

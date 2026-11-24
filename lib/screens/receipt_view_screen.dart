@@ -209,11 +209,6 @@ class _FactoryTag extends StatelessWidget {
                 'الشتايكر من أي معمل؟',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
               ),
-              const SizedBox(height: 4),
-              const Text(
-                'التغيير يأثر على التقارير فقط، وحساب الخلفة يبقى نفسه.',
-                style: TextStyle(fontSize: 12, color: appMuted),
-              ),
               const SizedBox(height: 16),
               CenterPicker(
                 ids: store.stygerSourceIds,
@@ -231,7 +226,7 @@ class _FactoryTag extends StatelessWidget {
       reason: 'تغيير معمل الوصل #${receipt.number}',
     );
     if (context.mounted) {
-      toast(context, 'صار الشتايكر على ${store.centerName(picked)} ✓');
+      toast(context, 'تم ✓');
     }
   }
 
@@ -239,7 +234,6 @@ class _FactoryTag extends StatelessWidget {
   Widget build(BuildContext context) {
     final store = AppStore.instance;
     final source = stygerSourceOf(store, receipt);
-    final others = receipt.otherProductsTotal;
     return Material(
       color: appSurface,
       borderRadius: BorderRadius.circular(AppRadius.card),
@@ -275,11 +269,6 @@ class _FactoryTag extends StatelessWidget {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    if (others > 0)
-                      Text(
-                        'و${fmtMoney(others)} على «منتجات أخرى»',
-                        style: const TextStyle(fontSize: 11, color: appMuted),
-                      ),
                   ],
                 ),
               ),

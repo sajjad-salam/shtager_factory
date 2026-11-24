@@ -26,7 +26,6 @@ Future<String?> _askFactoryName(
           textInputAction: TextInputAction.done,
           decoration: const InputDecoration(
             labelText: 'اسم المعمل',
-            hintText: 'مثال: معمل الطريق الصناعي',
             prefixIcon: Icon(Icons.factory_outlined),
           ),
           validator: (value) =>
@@ -97,12 +96,10 @@ Future<bool> deleteFactoryFlow(
     return false;
   }
   final purchases = store.incomingOf(factory.id).length;
-  final sales = store.receipts.where((r) => r.factoryId == factory.id).length;
   final ok = await confirm(
     context,
     'حذف ${factory.name}؟',
-    'راح تنحذف مشترياته ($purchases وصل) وما ترجع.\n'
-        '${sales > 0 ? 'وصولات البيع ($sales وصل) تبقى بحسابات الخلفات، بس الشتايكر اللي بيها ينحسب على «معامل أخرى».' : 'ماكو وصولات بيع مربوطة بيه.'}',
+    'تنحذف مشترياته ($purchases وصل).\nحسابات الخلفات ما تتأثر.',
   );
   if (!ok) return false;
   await store.deleteFactory(factory.id);

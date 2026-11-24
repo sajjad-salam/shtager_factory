@@ -39,12 +39,6 @@ IconData centerIcon(String id) => switch (id) {
   _ => Icons.factory_outlined,
 };
 
-String centerHint(String id) => switch (id) {
-  kOtherFactoriesId => 'شتايكر تشتريه من معامل غيرك وتبيعه',
-  kOtherProductsId => 'فوم، ماستيك، زفت وكل شي غير الشتايكر',
-  _ => 'شتايكر من إنتاج هذا المعمل',
-};
-
 String _pct(double v) => '${(v * 100).round()}%';
 
 // ───────────── بطاقة الرسم ─────────────
@@ -150,12 +144,11 @@ class LegendDot extends StatelessWidget {
 // ───────────── الدونات ─────────────
 
 class ChartSegment {
-  const ChartSegment(this.label, this.value, this.color, {this.sub});
+  const ChartSegment(this.label, this.value, this.color);
 
   final String label;
   final double value;
   final Color color;
-  final String? sub;
 }
 
 /// دونات مع قائمة تسميات. الضغط على قطعة أو سطر يبرزها ويعرض قيمتها بالوسط.
@@ -472,16 +465,6 @@ class RankedBars extends StatelessWidget {
                           fraction: top <= 0 ? 0 : shown[i].value.abs() / top,
                           color: color(shown[i]),
                         ),
-                        if (shown[i].sub != null) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            shown[i].sub!,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: appMuted,
-                            ),
-                          ),
-                        ],
                       ],
                     ),
                   ),
@@ -582,13 +565,6 @@ class ProfitCompareChart extends StatelessWidget {
                       color: centerColor(s.id),
                       split: hasLoss,
                     ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    s.isEmpty
-                        ? 'ماكو حركة بهذه الفترة'
-                        : 'مبيعات ${fmtCompact(s.sales)} · مشتريات ${fmtCompact(s.purchases)}',
-                    style: const TextStyle(fontSize: 11, color: appMuted),
                   ),
                 ],
               ),
@@ -909,7 +885,7 @@ class _MonthColumn extends StatelessWidget {
             height: 22,
             child: Center(
               child: Text(
-                shortArabicMonths[point.month.month - 1],
+                '${point.month.month}',
                 maxLines: 1,
                 overflow: TextOverflow.clip,
                 style: TextStyle(

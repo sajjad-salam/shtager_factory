@@ -15,7 +15,6 @@ String incomingReceiptMessage(IncomingReceipt receipt) {
   final center = store.centerName(receipt.factoryId);
   return 'وصل شراء رقم ${receipt.number} - ${store.settings.shopName}\n'
       'الجهة: $center\n'
-      '${receipt.supplier.isNotEmpty ? 'من: ${receipt.supplier}\n' : ''}'
       'النوع: ${receipt.category.label}\n'
       'المبلغ: ${fmtMoney(receipt.amount)}';
 }

@@ -351,17 +351,6 @@ class AppStore extends ChangeNotifier {
     kOtherFactoriesId,
   ];
 
-  /// أسماء الموردين السابقين، الأكثر استخداماً أولاً.
-  List<String> suppliersFor([String? centerId]) {
-    final count = <String, int>{};
-    for (final r in incomingReceipts) {
-      final s = r.supplier.trim();
-      if (s.isEmpty || (centerId != null && r.factoryId != centerId)) continue;
-      count[s] = (count[s] ?? 0) + 1;
-    }
-    return count.keys.toList()..sort((a, b) => count[b]!.compareTo(count[a]!));
-  }
-
   List<IncomingReceipt> incomingOf(String factoryId) =>
       incomingReceipts.where((r) => r.factoryId == factoryId).toList()
         ..sort((a, b) => b.date.compareTo(a.date));
@@ -395,7 +384,6 @@ class AppStore extends ChangeNotifier {
     required IncomingCategory category,
     required double amount,
     String notes = '',
-    String supplier = '',
   }) async {
     final receipt = IncomingReceipt(
       id: newId(),
@@ -404,7 +392,6 @@ class AppStore extends ChangeNotifier {
       category: category,
       amount: amount,
       notes: notes.trim(),
-      supplier: supplier.trim(),
     );
     incomingReceipts.add(receipt);
     await _saveDb();

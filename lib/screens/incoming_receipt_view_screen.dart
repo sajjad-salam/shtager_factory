@@ -144,8 +144,6 @@ class _IncomingReceiptViewScreenState extends State<IncomingReceiptViewScreen> {
                 ),
                 const SizedBox(height: 22),
                 _row('الجهة', center),
-                if (receipt.supplier.isNotEmpty)
-                  _row('اشتريت من', receipt.supplier),
                 _row('التاريخ', fmtDateTime(receipt.date)),
                 _row('المبلغ', fmtMoney(receipt.amount), strong: true),
                 if (receipt.notes.isNotEmpty) ...[

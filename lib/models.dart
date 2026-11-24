@@ -301,9 +301,6 @@ class IncomingReceipt {
   final IncomingCategory category;
   final double amount;
   final String notes;
-
-  /// الجهة اللي اشتريت منها (اختياري) — تُستخدم بتقرير أكثر الموردين.
-  final String supplier;
   final DateTime date;
 
   IncomingReceipt({
@@ -313,7 +310,6 @@ class IncomingReceipt {
     required this.category,
     required this.amount,
     this.notes = '',
-    this.supplier = '',
     DateTime? date,
   }) : date = date ?? DateTime.now();
 
@@ -324,7 +320,6 @@ class IncomingReceipt {
     'category': category.key,
     'amount': amount,
     'notes': notes,
-    'supplier': supplier,
     'date': date.toIso8601String(),
   };
 
@@ -335,7 +330,6 @@ class IncomingReceipt {
     category: IncomingCategoryInfo.fromKey(j['category'] as String?),
     amount: (j['amount'] as num?)?.toDouble() ?? 0,
     notes: j['notes'] as String? ?? '',
-    supplier: j['supplier'] as String? ?? '',
     date: DateTime.tryParse(j['date'] as String? ?? ''),
   );
 }

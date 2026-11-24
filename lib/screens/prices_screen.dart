@@ -102,11 +102,7 @@ class _PricesScreenState extends State<PricesScreen> {
                 contentPadding: EdgeInsets.zero,
                 value: factoryMade,
                 onChanged: (v) => setLocal(() => factoryMade = v ?? false),
-                title: const Text('شتايكر من إنتاج معاملي'),
-                subtitle: const Text(
-                  'ينحسب على المعمل اللي تختاره بالوصل',
-                  style: TextStyle(fontSize: 12),
-                ),
+                title: const Text('شتايكر'),
               ),
             ],
           ),
@@ -157,8 +153,7 @@ class _PricesScreenState extends State<PricesScreen> {
                       SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'غيّر السعر واضغط حفظ. الوصولات القديمة تبقى بسعرها القديم.\n'
-                          'المنتج المؤشر «شتايكر» ينحسب على المعمل اللي تختاره بالوصل، والباقي على «منتجات أخرى».',
+                          'غيّر السعر واضغط حفظ.',
                           style: TextStyle(fontSize: 13),
                         ),
                       ),
@@ -279,13 +274,8 @@ class _PricesScreenState extends State<PricesScreen> {
             alignment: AlignmentDirectional.centerStart,
             child: FilterChip(
               showCheckmark: true,
-              label: Text(
-                p.factoryMade
-                    ? 'شتايكر — يُحسب على المعمل'
-                    : 'يُحسب على «منتجات أخرى»',
-              ),
+              label: const Text('شتايكر'),
               selected: p.factoryMade,
-              tooltip: 'فعّلها إذا المنتج من إنتاج معاملك (شتايكر)',
               onSelected: (v) async {
                 p.factoryMade = v;
                 await store.saveProducts();

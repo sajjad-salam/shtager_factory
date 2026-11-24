@@ -28,8 +28,6 @@ class _CenterReportScreenState extends State<CenterReportScreen> {
   final store = AppStore.instance;
   late ReportPeriod _period = widget.period;
 
-  bool get _isFactory => store.factoryById(widget.centerId) != null;
-
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -85,21 +83,6 @@ class _CenterReportScreenState extends State<CenterReportScreen> {
               110,
             ),
             children: [
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Row(
-                  children: [
-                    Icon(centerIcon(id), size: 18, color: appMuted),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        centerHint(id),
-                        style: const TextStyle(fontSize: 12, color: appMuted),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
               PeriodSelector(
                 value: _period,
                 onChanged: (p) => setState(() => _period = p),
@@ -107,50 +90,23 @@ class _CenterReportScreenState extends State<CenterReportScreen> {
               const SizedBox(height: 16),
               HeroProfitCard(
                 report: report,
-                title: 'ربح ${store.centerName(id)}',
+                title: 'الربح',
                 accent: centerColor(id),
               ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  if (id != kOtherProductsId)
-                    Expanded(
-                      child: _miniTile(
-                        'الشتايكر المباع',
-                        '${fmtNum(stats.stygerQty)} ${stygerUnit()}',
-                        Icons.inventory_outlined,
-                      ),
-                    ),
-                  if (id != kOtherProductsId) const SizedBox(width: 10),
-                  Expanded(
-                    child: _miniTile(
-                      'وصولات بيع',
-                      '${stats.salesCount}',
-                      Icons.receipt_long_outlined,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _miniTile(
-                      'وصولات شراء',
-                      '${stats.purchaseCount}',
-                      Icons.shopping_bag_outlined,
-                    ),
-                  ),
-                ],
-              ),
+              if (id != kOtherProductsId) ...[
+                const SizedBox(height: 12),
+                _miniTile(
+                  'الشتايكر المباع',
+                  '${fmtNum(stats.stygerQty)} ${stygerUnit()}',
+                  Icons.inventory_outlined,
+                ),
+              ],
               const SizedBox(height: 16),
-              trendCard(report, subtitle: 'مبيعات ومشتريات هذه الجهة'),
+              trendCard(report),
               const SizedBox(height: 14),
               topCustomersCard(context, report),
-              if (id == kOtherProductsId) ...[
-                const SizedBox(height: 14),
-                topProductsCard(report),
-              ],
               const SizedBox(height: 14),
               purchasesByCategoryCard(report),
-              const SizedBox(height: 14),
-              topSuppliersCard(report),
               const SizedBox(height: 14),
               OutlinedButton.icon(
                 onPressed: () => Navigator.of(context).push(
@@ -159,7 +115,7 @@ class _CenterReportScreenState extends State<CenterReportScreen> {
                   ),
                 ),
                 icon: const Icon(Icons.list_alt_rounded),
-                label: const Text('كل مشتريات هذه الجهة'),
+                label: const Text('المشتريات'),
               ),
             ],
           ),
@@ -170,7 +126,7 @@ class _CenterReportScreenState extends State<CenterReportScreen> {
               ),
             ),
             icon: const Icon(Icons.add_rounded),
-            label: Text(_isFactory ? 'صرف على المعمل' : 'وصل شراء'),
+            label: const Text('وصل شراء'),
           ),
         );
       },
@@ -178,29 +134,29 @@ class _CenterReportScreenState extends State<CenterReportScreen> {
   }
 
   Widget _miniTile(String label, String value, IconData icon) => Container(
-    padding: const EdgeInsets.all(12),
+    padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
       color: appSurface,
       borderRadius: BorderRadius.circular(AppRadius.card),
     ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    child: Row(
       children: [
-        Icon(icon, size: 18, color: brand),
-        const SizedBox(height: 6),
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: AlignmentDirectional.centerStart,
+        Icon(icon, color: brand),
+        const SizedBox(width: 10),
+        Expanded(
           child: Text(
-            value,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: appInk,
-            ),
+            label,
+            style: const TextStyle(fontSize: 15, color: appInk),
           ),
         ),
-        Text(label, style: const TextStyle(fontSize: 11, color: appMuted)),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+            color: appInk,
+          ),
+        ),
       ],
     ),
   );
