@@ -47,10 +47,15 @@ enum WhatsAppResult { sentDirect, openedShareSheet }
 
 /// يرسل الوصل للواتساب. إذا الخلفة عنده رقم، يفتح محادثته مباشرة
 /// ومعها ملف الـ PDF. وإلا يفتح قائمة المشاركة حتى تختار الشخص بنفسك.
-Future<WhatsAppResult> shareReceiptToWhatsApp(Receipt r, {bool forceChooser = false}) async {
+Future<WhatsAppResult> shareReceiptToWhatsApp(
+  Receipt r, {
+  bool forceChooser = false,
+}) async {
   final bytes = await buildReceiptPdf(r);
   final text = receiptMessage(r);
-  final phone = normalizeWhatsApp(AppStore.instance.customerById(r.customerId)?.phone ?? '');
+  final phone = normalizeWhatsApp(
+    AppStore.instance.customerById(r.customerId)?.phone ?? '',
+  );
 
   if (!kIsWeb && Platform.isAndroid) {
     final path = await _writeTemp(r, bytes);
@@ -60,7 +65,9 @@ Future<WhatsAppResult> shareReceiptToWhatsApp(Receipt r, {bool forceChooser = fa
       'phone': forceChooser ? '' : phone,
     });
     if (ok == true) {
-      return phone.isNotEmpty && !forceChooser ? WhatsAppResult.sentDirect : WhatsAppResult.openedShareSheet;
+      return phone.isNotEmpty && !forceChooser
+          ? WhatsAppResult.sentDirect
+          : WhatsAppResult.openedShareSheet;
     }
   }
   await shareReceiptGeneric(r, bytes: bytes);
@@ -75,13 +82,19 @@ Future<void> shareReceiptGeneric(Receipt r, {Uint8List? bytes}) async {
   if (kIsWeb) {
     file = XFile.fromData(bytes, name: name, mimeType: 'application/pdf');
   } else {
-    file = XFile(await _writeTemp(r, bytes), name: name, mimeType: 'application/pdf');
+    file = XFile(
+      await _writeTemp(r, bytes),
+      name: name,
+      mimeType: 'application/pdf',
+    );
   }
-  await SharePlus.instance.share(ShareParams(
-    files: [file],
-    text: receiptMessage(r),
-    fileNameOverrides: [name],
-  ));
+  await SharePlus.instance.share(
+    ShareParams(
+      files: [file],
+      text: receiptMessage(r),
+      fileNameOverrides: [name],
+    ),
+  );
 }
 
 /// يحفظ الوصل بمجلد التنزيلات (Download/Shtager) ويرجع مكان الحفظ.
@@ -89,16 +102,21 @@ Future<String> saveReceiptToDevice(Receipt r) async {
   final bytes = await buildReceiptPdf(r);
   final name = receiptFileName(r);
   if (kIsWeb) {
-    await SharePlus.instance.share(ShareParams(
-      files: [XFile.fromData(bytes, name: name, mimeType: 'application/pdf')],
-      fileNameOverrides: [name],
-      downloadFallbackEnabled: true,
-    ));
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [XFile.fromData(bytes, name: name, mimeType: 'application/pdf')],
+        fileNameOverrides: [name],
+        downloadFallbackEnabled: true,
+      ),
+    );
     return name;
   }
   if (Platform.isAndroid) {
     final path = await _writeTemp(r, bytes);
-    final saved = await _native.invokeMethod<String>('saveToDownloads', {'path': path, 'name': name});
+    final saved = await _native.invokeMethod<String>('saveToDownloads', {
+      'path': path,
+      'name': name,
+    });
     return saved ?? path;
   }
   final dir = await getApplicationDocumentsDirectory();

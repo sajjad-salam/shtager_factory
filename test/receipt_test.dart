@@ -1,14 +1,43 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shtager/models.dart';
+import 'package:shtager/incoming_receipt_pdf.dart';
 import 'package:shtager/receipt_pdf.dart';
 import 'package:shtager/share_service.dart';
 import 'package:shtager/store.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  test('legacy v1 data migrates without losing outgoing records', () async {
+    final legacy = {
+      'app': 'shtager',
+      'version': 1,
+      'nextReceiptNumber': 2,
+      'customers': [
+        {
+          'id': 'old_customer',
+          'name': 'خلفة قديم',
+          'phone': '',
+          'notes': '',
+          'createdAt': '2025-01-01T00:00:00.000',
+        },
+      ],
+      'products': <Object>[],
+      'receipts': <Object>[],
+      'payments': <Object>[],
+    };
+    SharedPreferences.setMockInitialValues({'db_v1': jsonEncode(legacy)});
+    final store = AppStore.instance;
+    await store.load();
+    expect(store.customers.single.name, 'خلفة قديم');
+    expect(store.products, isNotEmpty);
+    expect(store.factories.single.name, 'المعمل الرئيسي');
+    expect(store.incomingReceipts, isEmpty);
+  });
 
   test('balances, export/import and PDF', () async {
     SharedPreferences.setMockInitialValues({});
@@ -69,10 +98,27 @@ void main() {
     expect(s.receipts.length, 2);
     expect(s.nextReceiptNumber, 3);
 
+    final incoming = await s.addIncomingReceipt(
+      factoryId: s.factories.single.id,
+      category: IncomingCategory.cement,
+      amount: 750000,
+      notes: 'سيارتان - السائق أبو حسن',
+    );
+    expect(s.totalPurchases, 750000);
+    expect(s.estimatedProfit, s.totalSales - 750000);
+    final v2 = s.exportDb();
+    expect(v2['version'], 3);
+    expect((v2['incomingReceipts'] as List).length, 1);
+    s.importDb(v2);
+    expect(s.incomingReceipts.single.notes, contains('أبو حسن'));
+
     final out = Platform.environment['PDF_OUT'];
     if (out != null) {
       await File('$out/r1.pdf').writeAsBytes(await buildReceiptPdf(r1));
       await File('$out/r2.pdf').writeAsBytes(await buildReceiptPdf(r2));
+      await File(
+        '$out/incoming.pdf',
+      ).writeAsBytes(await buildIncomingReceiptPdf(incoming));
     }
   });
 }

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../center_picker.dart';
+import '../charts.dart';
 import '../models.dart';
+import '../reports.dart';
 import '../share_service.dart';
 import '../store.dart';
 import '../telegram_backup.dart';
@@ -9,7 +12,11 @@ import '../ui.dart';
 class ReceiptViewScreen extends StatefulWidget {
   final String receiptId;
   final bool justCreated;
-  const ReceiptViewScreen({super.key, required this.receiptId, this.justCreated = false});
+  const ReceiptViewScreen({
+    super.key,
+    required this.receiptId,
+    this.justCreated = false,
+  });
 
   @override
   State<ReceiptViewScreen> createState() => _ReceiptViewScreenState();
@@ -50,22 +57,29 @@ class _ReceiptViewScreenState extends State<ReceiptViewScreen> {
 
         return Scaffold(
           appBar: AppBar(
-            title: Text('وصل #${r.number}'),
+            title: Text('وصل بيع #${r.number}'),
             actions: [
               const BackupIndicator(),
               PopupMenuButton<String>(
                 onSelected: (v) async {
                   if (v == 'delete') {
-                    final ok = await confirm(context, 'حذف الوصل #${r.number}؟',
-                        'راح ينشال مبلغه (${fmtMoney(r.total)}) من حساب ${c?.name ?? ''}.');
+                    final ok = await confirm(
+                      context,
+                      'حذف الوصل #${r.number}؟',
+                      'راح ينشال مبلغه (${fmtMoney(r.total)}) من حساب ${c?.name ?? ''}.',
+                    );
                     if (ok) {
                       await store.deleteReceipt(r.id);
-                      TelegramBackup.instance.backupNow(reason: 'حذف وصل #${r.number}');
+                      TelegramBackup.instance.backupNow(
+                        reason: 'حذف وصل #${r.number}',
+                      );
                       if (context.mounted) Navigator.pop(context);
                     }
                   }
                 },
-                itemBuilder: (_) => const [PopupMenuItem(value: 'delete', child: Text('حذف الوصل'))],
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: 'delete', child: Text('حذف الوصل')),
+                ],
               ),
             ],
           ),
@@ -80,63 +94,203 @@ class _ReceiptViewScreenState extends State<ReceiptViewScreen> {
                     color: const Color(0xFFE5F4EC),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Row(children: [
-                    Icon(Icons.check_circle, color: okColor),
-                    SizedBox(width: 8),
-                    Expanded(child: Text('انحفظ الوصل. هسه تكدر ترسله للخلفة.')),
-                  ]),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.check_circle, color: okColor),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text('انحفظ الوصل. هسه تكدر ترسله للخلفة.'),
+                      ),
+                    ],
+                  ),
                 ),
+              if (r.hasFactoryItems) ...[
+                _FactoryTag(receipt: r),
+                const SizedBox(height: 12),
+              ],
               ReceiptPreview(receipt: r),
               const SizedBox(height: 16),
               FilledButton.icon(
-                style: FilledButton.styleFrom(backgroundColor: const Color(0xFF1FA855)),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFF1FA855),
+                ),
                 onPressed: _busy
                     ? null
                     : () => _run(() async {
-                          final res = await shareReceiptToWhatsApp(r);
-                          if (mounted && res == WhatsAppResult.openedShareSheet && hasPhone) {
-                            toast(this.context, 'ما لكيت واتساب، اختار التطبيق من القائمة');
-                          }
-                        }),
+                        final res = await shareReceiptToWhatsApp(r);
+                        if (mounted &&
+                            res == WhatsAppResult.openedShareSheet &&
+                            hasPhone) {
+                          toast(
+                            this.context,
+                            'ما لكيت واتساب، اختار التطبيق من القائمة',
+                          );
+                        }
+                      }),
                 icon: const Icon(Icons.send),
-                label: Text(hasPhone ? 'إرسال لواتساب ${c!.name}' : 'مشاركة بالواتساب'),
+                label: Text(
+                  hasPhone ? 'إرسال لواتساب ${c!.name}' : 'مشاركة بالواتساب',
+                ),
               ),
               if (hasPhone) ...[
                 const SizedBox(height: 8),
                 OutlinedButton.icon(
-                  onPressed: _busy ? null : () => _run(() => shareReceiptToWhatsApp(r, forceChooser: true)),
+                  onPressed: _busy
+                      ? null
+                      : () => _run(
+                          () => shareReceiptToWhatsApp(r, forceChooser: true),
+                        ),
                   icon: const Icon(Icons.people_outline),
                   label: const Text('إرسال لشخص ثاني بالواتساب'),
                 ),
               ],
               const SizedBox(height: 8),
-              Row(children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _busy ? null : () => _run(() => shareReceiptGeneric(r)),
-                    icon: const Icon(Icons.share_outlined),
-                    label: const Text('مشاركة'),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _busy
+                          ? null
+                          : () => _run(() => shareReceiptGeneric(r)),
+                      icon: const Icon(Icons.share_outlined),
+                      label: const Text('مشاركة'),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _busy
-                        ? null
-                        : () => _run(() async {
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _busy
+                          ? null
+                          : () => _run(() async {
                               final where = await saveReceiptToDevice(r);
-                              if (mounted) toast(this.context, 'انحفظ الملف: $where');
+                              if (mounted) {
+                                toast(this.context, 'انحفظ الملف: $where');
+                              }
                             }),
-                    icon: const Icon(Icons.download_outlined),
-                    label: const Text('حفظ PDF'),
+                      icon: const Icon(Icons.download_outlined),
+                      label: const Text('حفظ PDF'),
+                    ),
                   ),
+                ],
+              ),
+              if (_busy)
+                const Padding(
+                  padding: EdgeInsets.only(top: 12),
+                  child: LinearProgressIndicator(),
                 ),
-              ]),
-              if (_busy) const Padding(padding: EdgeInsets.only(top: 12), child: LinearProgressIndicator()),
             ],
           ),
         );
       },
+    );
+  }
+}
+
+/// يبين المعمل اللي ينحسب عليه شتايكر الوصل (معلومة داخلية، ما تطلع بالـ PDF)
+/// ويسمح بتصحيحه.
+class _FactoryTag extends StatelessWidget {
+  const _FactoryTag({required this.receipt});
+
+  final Receipt receipt;
+
+  Future<void> _change(BuildContext context) async {
+    final store = AppStore.instance;
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheet) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'الشتايكر من أي معمل؟',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'التغيير يأثر على التقارير فقط، وحساب الخلفة يبقى نفسه.',
+                style: TextStyle(fontSize: 12, color: appMuted),
+              ),
+              const SizedBox(height: 16),
+              CenterPicker(
+                ids: store.stygerSourceIds,
+                selected: stygerSourceOf(store, receipt),
+                onChanged: (id) => Navigator.pop(sheet, id),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (picked == null || picked == receipt.factoryId) return;
+    await store.setReceiptFactory(receipt, picked);
+    TelegramBackup.instance.backupNow(
+      reason: 'تغيير معمل الوصل #${receipt.number}',
+    );
+    if (context.mounted) {
+      toast(context, 'صار الشتايكر على ${store.centerName(picked)} ✓');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final store = AppStore.instance;
+    final source = stygerSourceOf(store, receipt);
+    final others = receipt.otherProductsTotal;
+    return Material(
+      color: appSurface,
+      borderRadius: BorderRadius.circular(AppRadius.card),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        onTap: () => _change(context),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: centerColor(source).withValues(alpha: .16),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(centerIcon(source), color: appInk, size: 21),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'الشتايكر من',
+                      style: TextStyle(fontSize: 11, color: appMuted),
+                    ),
+                    Text(
+                      store.centerName(source),
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    if (others > 0)
+                      Text(
+                        'و${fmtMoney(others)} على «منتجات أخرى»',
+                        style: const TextStyle(fontSize: 11, color: appMuted),
+                      ),
+                  ],
+                ),
+              ),
+              const Text(
+                'تغيير',
+                style: TextStyle(color: brand, fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -155,84 +309,225 @@ class ReceiptPreview extends StatelessWidget {
     final grey = TextStyle(color: Colors.grey.shade600, fontSize: 12);
 
     Widget line(String a, String b, {bool strong = false}) => Padding(
-          padding: const EdgeInsets.symmetric(vertical: 3),
-          child: Row(children: [
-            Expanded(child: Text(a, style: strong ? const TextStyle(fontWeight: FontWeight.w700) : grey)),
-            Text(b, style: TextStyle(fontWeight: FontWeight.w700, fontSize: strong ? 16 : 13)),
-          ]),
-        );
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              a,
+              style: strong
+                  ? const TextStyle(fontWeight: FontWeight.w700)
+                  : grey,
+            ),
+          ),
+          Text(
+            b,
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: strong ? 16 : 13,
+            ),
+          ),
+        ],
+      ),
+    );
 
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Row(children: [
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(s.shopName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: brand)),
-                if (s.shopPhone.isNotEmpty) Text(s.shopPhone, style: grey),
-              ]),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(color: brand.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(8)),
-              child: Text('#${r.number}', style: const TextStyle(fontWeight: FontWeight.w700, color: brand, fontSize: 16)),
-            ),
-          ]),
-          const Divider(height: 24, thickness: 2, color: brand),
-          Row(children: [
-            Expanded(
-              child: Text.rich(TextSpan(children: [
-                TextSpan(text: 'السيد: ', style: grey),
-                TextSpan(text: c?.name ?? '—', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-              ])),
-            ),
-            Text(fmtDateTime(r.date), style: grey),
-          ]),
-          const SizedBox(height: 12),
-          Container(
-            decoration: BoxDecoration(
-              border: Border.all(color: const Color(0xFFD5DDE1)),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Column(children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                decoration: const BoxDecoration(
-                  color: brand,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(7)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        s.shopName,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: brand,
+                        ),
+                      ),
+                      if (s.shopPhone.isNotEmpty)
+                        Text(s.shopPhone, style: grey),
+                    ],
+                  ),
                 ),
-                child: const Row(children: [
-                  Expanded(flex: 3, child: Text('المادة', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700))),
-                  Expanded(flex: 2, child: Text('العدد', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700))),
-                  Expanded(flex: 2, child: Text('السعر', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700))),
-                  Expanded(flex: 3, child: Text('المبلغ', textAlign: TextAlign.end, style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700))),
-                ]),
-              ),
-              for (var i = 0; i < r.items.length; i++)
                 Container(
-                  color: i.isOdd ? const Color(0xFFF6F8F9) : null,
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  child: Row(children: [
-                    Expanded(flex: 3, child: Text(r.items[i].productName, style: const TextStyle(fontWeight: FontWeight.w600))),
-                    Expanded(flex: 2, child: Text('${fmtNum(r.items[i].qty)} ${r.items[i].unit}', textAlign: TextAlign.center)),
-                    Expanded(flex: 2, child: Text(fmtNum(r.items[i].unitPrice), textAlign: TextAlign.center)),
-                    Expanded(flex: 3, child: Text(fmtNum(r.items[i].total), textAlign: TextAlign.end, style: const TextStyle(fontWeight: FontWeight.w700))),
-                  ]),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: brand.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '#${r.number}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: brand,
+                      fontSize: 16,
+                    ),
+                  ),
                 ),
-            ]),
-          ),
-          const SizedBox(height: 12),
-          line('مجموع الوصل', fmtMoney(r.total), strong: true),
-          line('الواصل', fmtMoney(r.paid)),
-          line('الباقي من الوصل', fmtMoney(r.remaining)),
-          const Divider(height: 16),
-          line('الحساب الكلي الحالي للخلفة', fmtMoney(store.balanceOf(r.customerId))),
-          if (r.notes.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text('ملاحظات: ${r.notes}', style: grey),
+              ],
+            ),
+            const Divider(height: 24, thickness: 2, color: brand),
+            Row(
+              children: [
+                Expanded(
+                  child: Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(text: 'السيد: ', style: grey),
+                        TextSpan(
+                          text: c?.name ?? '—',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                Text(fmtDateTime(r.date), style: grey),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: const Color(0xFFD5DDE1)),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
+                    decoration: const BoxDecoration(
+                      color: brand,
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(7),
+                      ),
+                    ),
+                    child: const Row(
+                      children: [
+                        Expanded(
+                          flex: 3,
+                          child: Text(
+                            'المادة',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            'العدد',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            'السعر',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 3,
+                          child: Text(
+                            'المبلغ',
+                            textAlign: TextAlign.end,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  for (var i = 0; i < r.items.length; i++)
+                    Container(
+                      color: i.isOdd ? const Color(0xFFF6F8F9) : null,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 8,
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            flex: 3,
+                            child: Text(
+                              r.items[i].productName,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: Text(
+                              '${fmtNum(r.items[i].qty)} ${r.items[i].unit}',
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: Text(
+                              fmtNum(r.items[i].unitPrice),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                          Expanded(
+                            flex: 3,
+                            child: Text(
+                              fmtNum(r.items[i].total),
+                              textAlign: TextAlign.end,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            line('مجموع الوصل', fmtMoney(r.total), strong: true),
+            line('الواصل', fmtMoney(r.paid)),
+            line('الباقي من الوصل', fmtMoney(r.remaining)),
+            const Divider(height: 16),
+            line(
+              'الحساب الكلي الحالي للخلفة',
+              fmtMoney(store.balanceOf(r.customerId)),
+            ),
+            if (r.notes.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text('ملاحظات: ${r.notes}', style: grey),
+            ],
           ],
-        ]),
+        ),
       ),
     );
   }

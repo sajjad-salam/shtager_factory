@@ -21,7 +21,10 @@ class AppStore extends ChangeNotifier {
   List<Product> products = [];
   List<Receipt> receipts = [];
   List<Payment> payments = [];
+  List<FactoryLocation> factories = [];
+  List<IncomingReceipt> incomingReceipts = [];
   int nextReceiptNumber = 1;
+  int nextIncomingReceiptNumber = 1;
   AppSettings settings = AppSettings();
 
   /// هل توجد تغييرات لم تنرسل للتليجرام بعد؟
@@ -31,11 +34,21 @@ class AppStore extends ChangeNotifier {
 
   Future<void> load() async {
     _prefs = await SharedPreferences.getInstance();
+    customers = [];
+    products = [];
+    receipts = [];
+    payments = [];
+    factories = [];
+    incomingReceipts = [];
+    nextReceiptNumber = 1;
+    nextIncomingReceiptNumber = 1;
+    settings = AppSettings();
     final raw = _prefs.getString(_dbKey);
     if (raw != null) {
       importDb(jsonDecode(raw) as Map<String, dynamic>, save: false);
     } else {
       products = defaultProducts();
+      factories = defaultFactories();
     }
     final s = _prefs.getString(_settingsKey);
     if (s != null) settings = AppSettings.fromJson(jsonDecode(s));
@@ -48,7 +61,7 @@ class AppStore extends ChangeNotifier {
   }
 
   static List<Product> defaultProducts() => [
-    Product(id: 'p_staiger', name: 'شتايكر', unit: 'قطعة'),
+    Product(id: 'p_staiger', name: 'شتايكر', unit: 'قطعة', factoryMade: true),
     Product(id: 'p_foam', name: 'فوم', unit: 'لوح'),
     Product(id: 'p_mastic', name: 'ماستيك', unit: 'تنكة'),
     Product(id: 'p_asphalt', name: 'زفت', unit: 'برميل'),
@@ -56,13 +69,18 @@ class AppStore extends ChangeNotifier {
     Product(id: 'p_cork', name: 'فلين', unit: 'لوح'),
   ];
 
+  static List<FactoryLocation> defaultFactories() => [
+    FactoryLocation(id: 'factory_main', name: 'المعمل الرئيسي'),
+  ];
+
   // ───────────── الحفظ والتصدير ─────────────
 
   Map<String, dynamic> exportDb() => {
     'app': 'shtager',
-    'version': 1,
+    'version': 3,
     'exportedAt': DateTime.now().toIso8601String(),
     'nextReceiptNumber': nextReceiptNumber,
+    'nextIncomingReceiptNumber': nextIncomingReceiptNumber,
     'shop': {
       'shopName': settings.shopName,
       'shopPhone': settings.shopPhone,
@@ -72,6 +90,8 @@ class AppStore extends ChangeNotifier {
     'products': products.map((e) => e.toJson()).toList(),
     'receipts': receipts.map((e) => e.toJson()).toList(),
     'payments': payments.map((e) => e.toJson()).toList(),
+    'factories': factories.map((e) => e.toJson()).toList(),
+    'incomingReceipts': incomingReceipts.map((e) => e.toJson()).toList(),
   };
 
   void importDb(Map<String, dynamic> j, {bool save = true}) {
@@ -82,10 +102,31 @@ class AppStore extends ChangeNotifier {
     products = list('products').map(Product.fromJson).toList();
     receipts = list('receipts').map(Receipt.fromJson).toList();
     payments = list('payments').map(Payment.fromJson).toList();
+    factories = list('factories').map(FactoryLocation.fromJson).toList();
+    if (factories.isEmpty) factories = defaultFactories();
+    incomingReceipts = list(
+      'incomingReceipts',
+    ).map(IncomingReceipt.fromJson).toList();
     final maxNo = receipts.fold<int>(0, (m, r) => r.number > m ? r.number : m);
     nextReceiptNumber = (j['nextReceiptNumber'] as num?)?.toInt() ?? maxNo + 1;
     if (nextReceiptNumber <= maxNo) nextReceiptNumber = maxNo + 1;
+    final maxIncomingNo = incomingReceipts.fold<int>(
+      0,
+      (m, r) => r.number > m ? r.number : m,
+    );
+    nextIncomingReceiptNumber =
+        (j['nextIncomingReceiptNumber'] as num?)?.toInt() ?? maxIncomingNo + 1;
+    if (nextIncomingReceiptNumber <= maxIncomingNo) {
+      nextIncomingReceiptNumber = maxIncomingNo + 1;
+    }
     if (products.isEmpty) products = defaultProducts();
+    // قبل التحديث كانت كل المبيعات تُحسب على معمل واحد، فالوصولات القديمة
+    // اللي بيها شتايكر تنربط بأول معمل. تكدر تغيرها من صفحة الوصل.
+    for (final r in receipts) {
+      if (r.factoryId.isEmpty && r.hasFactoryItems) {
+        r.factoryId = factories.first.id;
+      }
+    }
     final shop = j['shop'];
     if (shop is Map && save) {
       settings.shopName = shop['shopName'] as String? ?? settings.shopName;
@@ -170,8 +211,9 @@ class AppStore extends ChangeNotifier {
   double balanceOf(String customerId, {String? excludingReceiptId}) {
     double b = 0;
     for (final r in receipts) {
-      if (r.customerId == customerId && r.id != excludingReceiptId)
+      if (r.customerId == customerId && r.id != excludingReceiptId) {
         b += r.remaining;
+      }
     }
     for (final p in payments) {
       if (p.customerId == customerId) b -= p.amount;
@@ -198,9 +240,20 @@ class AppStore extends ChangeNotifier {
 
   List<Product> get activeProducts => products.where((p) => p.active).toList();
 
-  Future<void> addProduct(String name, String unit, double price) async {
+  Future<void> addProduct(
+    String name,
+    String unit,
+    double price, {
+    bool factoryMade = false,
+  }) async {
     products.add(
-      Product(id: newId(), name: name.trim(), unit: unit.trim(), price: price),
+      Product(
+        id: newId(),
+        name: name.trim(),
+        unit: unit.trim(),
+        price: price,
+        factoryMade: factoryMade,
+      ),
     );
     await _saveDb();
   }
@@ -219,6 +272,7 @@ class AppStore extends ChangeNotifier {
     required List<ReceiptItem> items,
     double paid = 0,
     String notes = '',
+    String factoryId = '',
   }) async {
     final r = Receipt(
       id: newId(),
@@ -228,10 +282,17 @@ class AppStore extends ChangeNotifier {
       items: items,
       paid: paid,
       notes: notes.trim(),
+      factoryId: items.any((i) => i.factoryMade) ? factoryId : '',
     );
     receipts.add(r);
     await _saveDb();
     return r;
+  }
+
+  /// تصحيح المعمل اللي طلع منه شتايكر وصل قديم.
+  Future<void> setReceiptFactory(Receipt r, String factoryId) async {
+    r.factoryId = factoryId;
+    await _saveDb();
   }
 
   Future<void> deleteReceipt(String id) async {
@@ -260,6 +321,117 @@ class AppStore extends ChangeNotifier {
     payments.removeWhere((p) => p.id == id);
     await _saveDb();
   }
+
+  // ───────────── المشتريات والمعامل ─────────────
+
+  FactoryLocation? factoryById(String id) {
+    for (final factory in factories) {
+      if (factory.id == id) return factory;
+    }
+    return null;
+  }
+
+  /// اسم أي جهة: معمل، «معامل أخرى»، أو «منتجات أخرى».
+  String centerName(String id) => switch (id) {
+    kOtherFactoriesId => 'معامل أخرى',
+    kOtherProductsId => 'منتجات أخرى',
+    _ => factoryById(id)?.name ?? 'معامل أخرى',
+  };
+
+  /// كل الجهات بالترتيب: معاملي، ثم «معامل أخرى»، ثم «منتجات أخرى».
+  List<String> get centerIds => [
+    for (final f in factories) f.id,
+    kOtherFactoriesId,
+    kOtherProductsId,
+  ];
+
+  /// الجهات اللي يطلع منها الشتايكر بوصل البيع.
+  List<String> get stygerSourceIds => [
+    for (final f in factories) f.id,
+    kOtherFactoriesId,
+  ];
+
+  /// أسماء الموردين السابقين، الأكثر استخداماً أولاً.
+  List<String> suppliersFor([String? centerId]) {
+    final count = <String, int>{};
+    for (final r in incomingReceipts) {
+      final s = r.supplier.trim();
+      if (s.isEmpty || (centerId != null && r.factoryId != centerId)) continue;
+      count[s] = (count[s] ?? 0) + 1;
+    }
+    return count.keys.toList()..sort((a, b) => count[b]!.compareTo(count[a]!));
+  }
+
+  List<IncomingReceipt> incomingOf(String factoryId) =>
+      incomingReceipts.where((r) => r.factoryId == factoryId).toList()
+        ..sort((a, b) => b.date.compareTo(a.date));
+
+  Future<FactoryLocation> addFactory(String name) async {
+    final factory = FactoryLocation(id: newId(), name: name.trim());
+    factories.add(factory);
+    await _saveDb();
+    return factory;
+  }
+
+  Future<void> renameFactory(FactoryLocation factory, String name) async {
+    factory.name = name.trim();
+    await _saveDb();
+  }
+
+  /// يحذف المعمل ومشترياته. وصولات البيع ما تنحذف (لأنها حسابات خلفات)،
+  /// بس الشتايكر اللي بيها ينتقل إلى «معامل أخرى».
+  Future<void> deleteFactory(String id) async {
+    if (factories.length <= 1) return;
+    factories.removeWhere((factory) => factory.id == id);
+    incomingReceipts.removeWhere((receipt) => receipt.factoryId == id);
+    for (final r in receipts) {
+      if (r.factoryId == id) r.factoryId = kOtherFactoriesId;
+    }
+    await _saveDb();
+  }
+
+  Future<IncomingReceipt> addIncomingReceipt({
+    required String factoryId,
+    required IncomingCategory category,
+    required double amount,
+    String notes = '',
+    String supplier = '',
+  }) async {
+    final receipt = IncomingReceipt(
+      id: newId(),
+      number: nextIncomingReceiptNumber++,
+      factoryId: factoryId,
+      category: category,
+      amount: amount,
+      notes: notes.trim(),
+      supplier: supplier.trim(),
+    );
+    incomingReceipts.add(receipt);
+    await _saveDb();
+    return receipt;
+  }
+
+  Future<void> deleteIncomingReceipt(String id) async {
+    incomingReceipts.removeWhere((receipt) => receipt.id == id);
+    await _saveDb();
+  }
+
+  double incomingTotalOf(String factoryId) => incomingReceipts
+      .where((r) => r.factoryId == factoryId)
+      .fold(0, (sum, receipt) => sum + receipt.amount);
+
+  double incomingCategoryTotal(String factoryId, IncomingCategory category) =>
+      incomingReceipts
+          .where((r) => r.factoryId == factoryId && r.category == category)
+          .fold(0, (sum, receipt) => sum + receipt.amount);
+
+  double get totalSales =>
+      receipts.fold(0, (sum, receipt) => sum + receipt.total);
+
+  double get totalPurchases =>
+      incomingReceipts.fold(0, (sum, receipt) => sum + receipt.amount);
+
+  double get estimatedProfit => totalSales - totalPurchases;
 }
 
 // ───────────── تنسيق الأرقام والتواريخ ─────────────

@@ -100,7 +100,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     '٢. انسخ التوكن (Token) اللي ينطيك ياه والصقه هنا.\n'
                     '٣. افتح البوت مالك واضغط Start (أو أرسل له أي رسالة).\n'
                     '٤. اضغط "جلب Chat ID" وبعدين "نسخ الآن".\n'
-                    'كل وصل جديد ودفعة راح تنرسل نسخة منها للبوت وتتثبت بالمحادثة.',
+                    'كل وصل بيع أو شراء وكل دفعة راح تنرسل نسخة منها للبوت وتتثبت بالمحادثة.',
                     style: TextStyle(
                       fontSize: 13,
                       color: Colors.grey.shade800,
@@ -154,7 +154,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('إرسال ملف PDF الوصل للبوت أيضاً'),
+            title: const Text('إرسال ملفات PDF للوصولات للبوت أيضاً'),
             value: store.settings.sendPdfToTelegram,
             onChanged: (v) async {
               store.settings.sendPdfToTelegram = v;
@@ -296,11 +296,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (!mounted) return;
       final n = (data['customers'] as List?)?.length ?? 0;
       final m = (data['receipts'] as List?)?.length ?? 0;
+      final incoming = (data['incomingReceipts'] as List?)?.length ?? 0;
       final at = DateTime.tryParse(data['exportedAt'] as String? ?? '');
       final ok = await confirm(
         context,
         'استرجاع النسخة؟',
-        'النسخة بتاريخ ${at != null ? fmtDateTime(at) : '—'}\nفيها $n خلفة و $m وصل.\n'
+        'النسخة بتاريخ ${at != null ? fmtDateTime(at) : '—'}\nفيها $n خلفة و$m وصل بيع و$incoming وصل شراء.\n'
             'البيانات الحالية على الجهاز راح تتبدل بيها.',
         ok: 'استرجاع',
       );

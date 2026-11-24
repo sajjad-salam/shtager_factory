@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../charts.dart';
+import '../reports.dart';
 import '../store.dart';
 import '../ui.dart';
 import 'receipt_view_screen.dart';
@@ -24,12 +26,16 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
           if (_q.isEmpty) return true;
           final name = store.customerById(r.customerId)?.name ?? '';
           return name.contains(_q) || '${r.number}' == _q;
-        }).toList()
-          ..sort((a, b) => b.date.compareTo(a.date));
+        }).toList()..sort((a, b) => b.date.compareTo(a.date));
 
         final now = DateTime.now();
         final todayTotal = store.receipts
-            .where((r) => r.date.year == now.year && r.date.month == now.month && r.date.day == now.day)
+            .where(
+              (r) =>
+                  r.date.year == now.year &&
+                  r.date.month == now.month &&
+                  r.date.day == now.day,
+            )
             .fold<double>(0, (s, r) => s + r.total);
 
         return ListView(
@@ -38,12 +44,20 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(14),
-                child: Row(children: [
-                  const Icon(Icons.today, color: brand),
-                  const SizedBox(width: 10),
-                  const Expanded(child: Text('مبيعات اليوم')),
-                  Text(fmtMoney(todayTotal), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-                ]),
+                child: Row(
+                  children: [
+                    const Icon(Icons.today, color: brand),
+                    const SizedBox(width: 10),
+                    const Expanded(child: Text('مبيعات اليوم')),
+                    Text(
+                      fmtMoney(todayTotal),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -66,21 +80,60 @@ class _ReceiptsScreenState extends State<ReceiptsScreen> {
               Card(
                 clipBehavior: Clip.antiAlias,
                 child: ListTile(
-                  onTap: () => Navigator.of(context)
-                      .push(MaterialPageRoute(builder: (_) => ReceiptViewScreen(receiptId: r.id))),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => ReceiptViewScreen(receiptId: r.id),
+                    ),
+                  ),
                   leading: CircleAvatar(
                     backgroundColor: brand.withValues(alpha: 0.1),
                     foregroundColor: brand,
-                    child: Text('${r.number}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                    child: Text(
+                      '${r.number}',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
-                  title: Text(store.customerById(r.customerId)?.name ?? '—',
-                      style: const TextStyle(fontWeight: FontWeight.w700)),
-                  subtitle: Text(
-                    '${fmtDate(r.date)}  •  ${r.items.map((i) => '${i.productName} ${fmtNum(i.qty)}').join('، ')}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  title: Text(
+                    store.customerById(r.customerId)?.name ?? '—',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
-                  trailing: Text(fmtMoney(r.total), style: const TextStyle(fontWeight: FontWeight.w700)),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${fmtDate(r.date)}  •  ${r.items.map((i) => '${i.productName} ${fmtNum(i.qty)}').join('، ')}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (r.hasFactoryItems)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 3),
+                          child: Row(
+                            children: [
+                              LegendDot(
+                                centerColor(stygerSourceOf(store, r)),
+                                size: 8,
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                store.centerName(stygerSourceOf(store, r)),
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: appMuted,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                  trailing: Text(
+                    fmtMoney(r.total),
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
                 ),
               ),
               const SizedBox(height: 8),
